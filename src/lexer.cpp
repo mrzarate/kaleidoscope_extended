@@ -33,8 +33,13 @@ int gettok() {
             LastChar = getchar();
         } while (isdigit(LastChar) || LastChar == '.');
 
-        NumVal = strtod(NumStr.c_str(), nullptr);
-        return tok_number;
+        if (isfloat) {
+            NumVal = strtod(NumStr.c_str(), nullptr);
+            return tok_number;    
+        } else {
+            intVal = strtoll(Num.Str.c_str(), nullptr, 10);
+            return tok_integer;
+        }
     }
 
     if (LastChar == '#'){

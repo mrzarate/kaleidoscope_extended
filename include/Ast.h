@@ -19,6 +19,14 @@ public:
     NumberExprAST(double Val) : Val(Val) {}
 };
 
+//// IntExprAST - Expression class for integer literals like "12"
+class IntExprAST : public ExprAST {
+    long long Num;
+
+public:
+    IntExprAST(long long Num) : Num(Num) {}
+}
+
 /// VariableExprAST - Expression class for referencing a variable, like "a"
 class VariableExprAST : public ExprAST {
     std::string Name;
