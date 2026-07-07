@@ -1,4 +1,4 @@
-#include "lexer.h" // Lexer Header
+#include "Lexer.h" // Lexer Header
 #include <ctype> // Functions of character classification
 #include <cstdio> // Input and Output in C style
 #include <cstdlib> // Conversion functions and geneal utility

@@ -1,5 +1,4 @@
-#include "lexer.h"
-#include "ast.h"
+#include "Parser.h"
 #include <cstdio>
 #include <map>
 #include <memory>
@@ -9,12 +8,12 @@
 /// CurTok/getNextToken - Provide a simple token buffer. CurTok is the current
 /// token the parser is looking at. getNextToken reads another token from the
 /// lexer and updates CurTok with its results.
-static int CurTok;
-static int getNextToken() { return CurTok = gettok(); }
+int CurTok;
+int getNextToken() { return CurTok = gettok(); }
 
 /// Binop Precedence - This holds the precedence for each binary operator that is
 /// defined.
-static std::map<char, int> BinopPrecedence;
+std::map<char, int> BinopPrecedence;
 
 /// GetTokPrecedence - Get the precedence of the pending binary operator token.
 static int GetTokPrecedence() {
@@ -44,6 +43,13 @@ static std::unique_ptr<ExprAST> ParseExpression();
 static std::unique_ptr<ExprAST> ParseNumberExpr() {
     auto Result = std::make_unique<NumberExprAST>(NumVal);
     getNextToken(); //consume the number
+    return std::move(Result);
+}
+
+/// intexpr ::= integer
+static std::unique_ptr<ExprAST> ParseIntExpr() {
+    auto Result = std::make_unique<IntExprAST>(intVal);
+    getNextToken(); // consume the integer
     return std::move(Result);
 }
 
@@ -108,6 +114,8 @@ static std::unique_ptr<ExprAST> ParsePrimary() {
         return ParseIdentifierExpr();
     case tok_number:
         return ParseNumberExpr();
+    case tok_integer:
+        return ParseIntExpr();
     case '(':
         return ParseParenExpr();
     }
