@@ -1,12 +1,22 @@
 #include "Driver.h"
 #include "Lexer.h"
+#include "Parser.h"
 #include "Ast.h"
+#include "TypeChecker.h"
 #include <cstdio>
+
+static TypeChecker TC;
 
 /// Top-Level Parsing
 
 static void HandleDefinition() {
-    if (!ParseDefinition()) {
+    if (auto FunctionAST = ParseDefinition()) {
+        try {
+            TC.check(FunctionAST->getBody());
+        } catch (const std::runtime_error &e) {
+            fprintf(stderr, "Type error: %s\n", e.what());
+        }
+    } else {
         getNextToken(); // skip token for error recovery
     }
 }
@@ -18,7 +28,13 @@ static void HandleExtern() {
 }
 
 static void HandleTopLevelExpression() {
-    if (!ParseTopLevelExpr()) {
+    if (auto ExprAST = ParseTopLevelExpr()) {
+        try {
+            TC.check(ExprAST->getBody());
+        } catch (const std::runtime_error &e) {
+            fprintf(stderr, "Type error: %s\n", e.what());
+        }
+    } else {
         getNextToken(); // skip token for error recovery
     }
 }
@@ -26,7 +42,6 @@ static void HandleTopLevelExpression() {
 /// top ::= definition | external | expression | ';'
 void MainLoop() {
     while(true) {
-        fprintf(stderr, "ready> ");
         switch (CurTok) {
             case tok_eof:
                 return;

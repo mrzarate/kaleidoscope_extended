@@ -1,10 +1,11 @@
 #include "Lexer.h" // Lexer Header
-#include <ctype> // Functions of character classification
+#include <cctype> // Functions of character classification
 #include <cstdio> // Input and Output in C style
 #include <cstdlib> // Conversion functions and geneal utility
 
 std::string IdentifierStr; // Filled in if tok_identifier
 double NumVal; // Filler in if tok_number
+long long IntVal; // Filler in if tok_integer
 
 /// gettok  - Return the next token from standard input
 int gettok() {
@@ -28,16 +29,20 @@ int gettok() {
 
     if (isdigit(LastChar) || LastChar == '.') { // number: [0-9.]+
         std::string NumStr;
+        bool isFloat = false;
+
         do {
+            if (LastChar == '.')
+                isFloat = true;
             NumStr += LastChar;
             LastChar = getchar();
         } while (isdigit(LastChar) || LastChar == '.');
 
-        if (isfloat) {
+        if (isFloat) {
             NumVal = strtod(NumStr.c_str(), nullptr);
             return tok_number;    
         } else {
-            intVal = strtoll(Num.Str.c_str(), nullptr, 10);
+            IntVal = strtoll(NumStr.c_str(), nullptr, 10);
             return tok_integer;
         }
     }

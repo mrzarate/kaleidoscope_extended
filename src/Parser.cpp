@@ -48,7 +48,7 @@ static std::unique_ptr<ExprAST> ParseNumberExpr() {
 
 /// intexpr ::= integer
 static std::unique_ptr<ExprAST> ParseIntExpr() {
-    auto Result = std::make_unique<IntExprAST>(intVal);
+    auto Result = std::make_unique<IntExprAST>(IntVal);
     getNextToken(); // consume the integer
     return std::move(Result);
 }
@@ -194,7 +194,7 @@ static std::unique_ptr<PrototypeAST> ParsePrototype() {
 }
 
 /// definition ::= 'def' prototype expression
-static std::unique_ptr<FunctionAST> ParseDefinition() {
+std::unique_ptr<FunctionAST> ParseDefinition() {
     getNextToken(); // eat def
     auto Proto = ParsePrototype();
     if (!Proto)
@@ -206,7 +206,7 @@ static std::unique_ptr<FunctionAST> ParseDefinition() {
 }
 
 /// toplevelexpr ::= expression
-static std::unique_ptr<FunctionAST> ParseTopLevelExpr() {
+std::unique_ptr<FunctionAST> ParseTopLevelExpr() {
     if (auto E = ParseExpression()) {
         // Make an anonymous proto
         auto Proto = std::make_unique<PrototypeAST>("__anon_expr", 
@@ -217,7 +217,7 @@ static std::unique_ptr<FunctionAST> ParseTopLevelExpr() {
 }
 
 /// external ::= 'extern' prototype
-static std::unique_ptr<PrototypeAST> ParseExtern() {
+std::unique_ptr<PrototypeAST> ParseExtern() {
     getNextToken(); // eat extern
     return ParsePrototype();
 }

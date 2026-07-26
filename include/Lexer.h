@@ -19,7 +19,7 @@ enum Token {
 /// gettok  - Return the next token from standard input
 extern std::string IdentifierStr; // Filled in if tok_identifier
 extern double NumVal; // Filler in if tok_number
-extern long long IntVal;
+extern long long IntVal; // Filler in if tok_integer
 
 int gettok();
 

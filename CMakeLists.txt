@@ -9,6 +9,7 @@ include_directories(include)
 add_executable(kaleidoscope_extended
     src/Lexer.cpp
     src/Parser.cpp
+    src/TypeChecker.cpp
     src/Driver.cpp
     src/Main.cpp
 )

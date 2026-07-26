@@ -38,7 +38,7 @@ class IntExprAST : public ExprAST {
 public:
     IntExprAST(long long Num) : Num(Num) {}
 
-    long long getVal() const { return Num }
+    long long getVal() const { return Num; }
     Type getType() const override { return Type::Int; }   
 };
 
@@ -69,8 +69,8 @@ public:
             ResultType(Type::Unknown) {}
 
     char getOp() const { return Op; }
-    ExprAST *getLHS() const { return LHS.get; }
-    ExprAST *getRHS() const { return RHS.get; }
+    ExprAST *getLHS() const { return LHS.get(); }
+    ExprAST *getRHS() const { return RHS.get(); }
 
     Type getType() const override { return ResultType; }
     void setType(Type T) { ResultType = T; }
@@ -95,7 +95,7 @@ public:
 /// PrototypeAST - This class represents the "prototype" for a function,
 /// which captures its name and its argument names (thus implicitly the number
 /// of arguments the function takes)
-class PrototypeAST: public ExprAST {
+class PrototypeAST {
     std::string Name;
     std::vector<std::string> Args;
     Type ReturnType;
@@ -119,6 +119,8 @@ public:
     FunctionAST(std::unique_ptr<PrototypeAST> Proto, 
                 std::unique_ptr<ExprAST> Body)
         : Proto(std::move(Proto)), Body(std::move(Body)) {}
+
+    ExprAST *getBody() const { return Body.get(); }
 };
 
 #endif 
