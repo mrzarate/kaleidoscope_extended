@@ -1,5 +1,6 @@
 #include "Driver.h"
-#include "Parser.h"
+#include "frontend/Parser.h"
+#include "codegen/CodeGen.h"
 #include <cstdio>
 
 int main() {
@@ -10,6 +11,8 @@ int main() {
     BinopPrecedence['*'] = 40;
 
     getNextToken();
+
+    InitializeModule("kaleidoscope_extended");
 
     // Enters the main loop
     MainLoop();

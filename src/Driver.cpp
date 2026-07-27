@@ -1,9 +1,12 @@
-#include "Driver.h"
-#include "Lexer.h"
-#include "Parser.h"
 #include "Ast.h"
-#include "TypeChecker.h"
+#include "Driver.h"
+#include "frontend/Lexer.h"
+#include "frontend/Parser.h"
+#include "frontend/TypeChecker.h"
+#include "codegen/CodeGen.h"
 #include <cstdio>
+
+using namespace llvm;
 
 static TypeChecker TC;
 
@@ -11,10 +14,11 @@ static TypeChecker TC;
 
 static void HandleDefinition() {
     if (auto FunctionAST = ParseDefinition()) {
-        try {
-            TC.check(FunctionAST->getBody());
-        } catch (const std::runtime_error &e) {
-            fprintf(stderr, "Type error: %s\n", e.what());
+        TC.check(FunctionAST->getBody());
+        if (auto *FunctionIR = FunctionAST->codegen()) {
+            fprintf(stderr, "Read funtion definition:\n");
+            FunctionIR->print(errs());
+            fprintf(stderr, "\n");
         }
     } else {
         getNextToken(); // skip token for error recovery
@@ -22,17 +26,25 @@ static void HandleDefinition() {
 }
 
 static void HandleExtern() {
-    if (!ParseExtern()) {
+    if (auto ProtoAST = ParseExtern()) {
+        if (auto *FunctionIR = ProtoAST->codegen()) {
+            fprintf(stderr, "Read extern:\n");
+            FunctionIR->print(errs());
+            fprintf(stderr, "\n");
+        }
+    } else {
         getNextToken(); // skip token for error recovery
     }
 }
 
 static void HandleTopLevelExpression() {
-    if (auto ExprAST = ParseTopLevelExpr()) {
-        try {
-            TC.check(ExprAST->getBody());
-        } catch (const std::runtime_error &e) {
-            fprintf(stderr, "Type error: %s\n", e.what());
+    if (auto FunctionAST = ParseTopLevelExpr()) {
+        TC.check(FunctionAST->getBody());
+        if (auto *FunctionIR = FunctionAST->codegen()) {
+            fprintf(stderr, "Read top-level expression:\n");
+            FunctionIR->print(errs());
+            fprintf(stderr, "\n");
+            FunctionIR->eraseFromParent();
         }
     } else {
         getNextToken(); // skip token for error recovery

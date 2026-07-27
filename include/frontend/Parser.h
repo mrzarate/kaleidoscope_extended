@@ -2,7 +2,7 @@
 #define PARSER_H
 
 #include "Ast.h"
-#include "Lexer.h"
+#include "frontend/Lexer.h"
 #include <map>
 #include <memory>
 

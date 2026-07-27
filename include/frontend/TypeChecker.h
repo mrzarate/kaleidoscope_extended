@@ -2,8 +2,6 @@
 #define TYPECHECKER_H
 
 #include "Ast.h"
-#include <stdexcept>
-#include <string>
 
 /// Runs through the AST e solves the type of each node
 /// Until now, it only supports Int or Double
