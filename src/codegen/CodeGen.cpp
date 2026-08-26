@@ -1,5 +1,9 @@
 #include "codegen/CodeGen.h"
 #include "Ast.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar/Reassociate.h"
+#include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include <cstdio>
 
 using namespace llvm;
@@ -11,15 +15,45 @@ std::unique_ptr<Module> TheModule;
 std::unique_ptr<IRBuilder<>> Builder;
 std::map<std::string, Value *> NamedValues;
 
+std::unique_ptr<FunctionPassManager> TheFPM;
+std::unique_ptr<LoopAnalysisManager> TheLAM;
+std::unique_ptr<FunctionAnalysisManager> TheFAM;
+std::unique_ptr<CGSCCAnalysisManager> TheCGAM;
+std::unique_ptr<ModuleAnalysisManager> TheMAM;
+
 Value *LogErrorV(const char *Str) {
     fprintf(stderr, "Error: %s\n", Str);
     return nullptr;
 }
 
-void InitializeModule(const std::string &ModuleName) {
+void InitializeModuleAndManagers() {
+    // Creates context, module and builder
     TheContext = std::make_unique<LLVMContext>();
-    TheModule = std::make_unique<Module>(ModuleName, *TheContext);
+    TheModule = std::make_unique<Module>("kaleidoscope_extended", *TheContext);
     Builder = std::make_unique<IRBuilder<>>(*TheContext);
+
+    // Creates analysis and transformation managers
+    TheFPM = std::make_unique<FunctionPassManager>();
+    TheLAM = std::make_unique<LoopAnalysisManager>();
+    TheFAM = std::make_unique<FunctionAnalysisManager>();
+    TheCGAM = std::make_unique<CGSCCAnalysisManager>();
+    TheMAM = std::make_unique<ModuleAnalysisManager>();
+
+    // Adds otimization passes per function
+    // Peephole : local simplification of instructions
+    TheFPM->addPass(InstCombinePass());
+    // Reassociation: reorders expressions to expose them to more otimizations
+    TheFPM->addPass(ReassociatePass());
+    // GVN: eliminate common subexpressions
+    TheFPM->addPass(GVNPass());
+    // SimplifyCFG: remove dead blocks and simplifies the control flow graph
+    TheFPM->addPass(SimplifyCFGPass());
+
+    // Register the required analysis passes for transformation passes
+    PassBuilder PB;
+    PB.registerModuleAnalyses(*TheMAM);
+    PB.registerFunctionAnalyses(*TheFAM);
+    PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
 }
 
 /// Codegen Expressions
@@ -144,6 +178,10 @@ Function *FunctionAST::codegen() {
     if (Value *RetVal = Body->codegen()) {
         Builder->CreateRet(RetVal);
         verifyFunction(*TheFunction);
+
+        // Runs the otimization passes in the function
+        TheFPM->run(*TheFunction, *TheFAM);
+
         return TheFunction;
     }
 

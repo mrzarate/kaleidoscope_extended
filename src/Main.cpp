@@ -12,7 +12,7 @@ int main() {
 
     getNextToken();
 
-    InitializeModule("kaleidoscope_extended");
+    InitializeModuleAndManagers();
 
     // Enters the main loop
     MainLoop();

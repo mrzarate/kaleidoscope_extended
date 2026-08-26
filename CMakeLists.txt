@@ -16,8 +16,6 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(include)
 
-llvm_map_components_to_libnames(LLVM_LIBS core support irreader)
-
 add_executable(kaleidoscope_extended
     src/frontend/Lexer.cpp
     src/frontend/Parser.cpp
@@ -27,4 +25,4 @@ add_executable(kaleidoscope_extended
     src/Main.cpp
 )
 
-target_link_libraries(kaleidoscope_extended ${LLVM_LIBS})
+target_link_libraries(kaleidoscope_extended LLVM-21)
