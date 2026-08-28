@@ -13,6 +13,15 @@
 #include "llvm/Analysis/LoopAnalysisManager.h"
 #include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/IR/PassManager.h"
+
+// Required headers to emit object file
+#include "llvm/Support/FileSystem.h" // Opening of output file
+#include "llvm/Support/TargetSelect.h" // Inicialization of native target
+#include "llvm/Target/TargetMachine.h" // Target machine
+#include "llvm/Target/TargetOptions.h" // Target Options
+#include "llvm/TargetParser/Host.h" // Host's CPU detection
+#include "llvm/MC/TargetRegistry.h" // register of available targets
+
 #include <map>
 #include <memory>
 #include <string>
@@ -32,5 +41,7 @@ extern std::unique_ptr<llvm::ModuleAnalysisManager> TheMAM;
 
 llvm::Value *LogErrorV(const char *Str);
 void InitializeModuleAndManagers();
+
+bool EmitObjectFile(const std::string &Filename);
 
 #endif // CODEGEN_H

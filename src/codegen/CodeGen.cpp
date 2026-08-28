@@ -4,6 +4,13 @@
 #include "llvm/Transforms/Scalar/Reassociate.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/TargetParser/Host.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include <cstdio>
 
 using namespace llvm;
@@ -54,6 +61,67 @@ void InitializeModuleAndManagers() {
     PB.registerModuleAnalyses(*TheMAM);
     PB.registerFunctionAnalyses(*TheFAM);
     PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
+}
+
+/// Emission of Object File
+bool EmitObjectFile(const std::string &Filename) {
+    // Initialize the native target
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    InitializeNativeTargetAsmParser();
+
+    // Detects the host triple automatically
+    llvm::Triple TargetTriple(sys::getDefaultTargetTriple());
+    TheModule->setTargetTriple(TargetTriple);
+
+    // Searches the corresponding target to the triple in LLVM's register
+    std::string Error;
+    auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
+    if (!Target) {
+        fprintf(stderr, "Error: Impossible to find the target: %s\n",
+                Error.c_str());
+        return false;
+    }
+
+    auto CPU = sys::getHostCPUName();
+    auto Features = "";
+
+    TargetOptions Opt;
+    auto TheTargetMachine = Target->createTargetMachine(
+        TargetTriple,
+        CPU,
+        Features,
+        Opt,
+        Reloc::PIC_ // Position Independent Code - required for linking
+    );
+
+    // Informs the data layout to the module
+    TheModule->setDataLayout(TheTargetMachine->createDataLayout());
+
+    // Opens the output file
+    std::error_code EC;
+    raw_fd_ostream Dest(Filename, EC, sys::fs::OF_None);
+    if (EC) {
+        fprintf(stderr, "Error: was not possible to open the file '%s': %s\n",
+                Filename.c_str(), EC.message().c_str());
+        return false;
+    }
+
+    // Uses legacy pass manager for object emission
+    legacy::PassManager CodeGenPM;
+    if (TheTargetMachine->addPassesToEmitFile(
+            CodeGenPM, Dest, nullptr,
+            CodeGenFileType::ObjectFile)) {
+        fprintf(stderr, "Error: target does not support file object emission\n");
+        return false;
+    }
+
+    // Runs the codegen pipeline and writes in the file
+    CodeGenPM.run(*TheModule);
+    Dest.flush();
+
+    fprintf(stderr, "Object file generated: %s\n", Filename.c_str());
+    return true;
 }
 
 /// Codegen Expressions

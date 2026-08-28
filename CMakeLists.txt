@@ -16,6 +16,17 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(include)
 
+llvm_map_components_to_libnames(LLVM_LIBS
+    core
+    support
+    irreader
+    passes
+    native
+    codegen
+    mc
+    target
+)
+
 add_executable(kaleidoscope_extended
     src/frontend/Lexer.cpp
     src/frontend/Parser.cpp

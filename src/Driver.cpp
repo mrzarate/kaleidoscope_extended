@@ -15,10 +15,8 @@ static TypeChecker TC;
 static void HandleDefinition() {
     if (auto FunctionAST = ParseDefinition()) {
         TC.check(FunctionAST->getBody());
-        if (auto *FunctionIR = FunctionAST->codegen()) {
-            fprintf(stderr, "Read funtion definition:\n");
-            FunctionIR->print(errs());
-            fprintf(stderr, "\n");
+        if (!FunctionAST->codegen()) {
+            fprintf(stderr, "Error: fail to generate code for function definition.\n");
         }
     } else {
         getNextToken(); // skip token for error recovery
@@ -27,10 +25,8 @@ static void HandleDefinition() {
 
 static void HandleExtern() {
     if (auto ProtoAST = ParseExtern()) {
-        if (auto *FunctionIR = ProtoAST->codegen()) {
-            fprintf(stderr, "Read extern:\n");
-            FunctionIR->print(errs());
-            fprintf(stderr, "\n");
+        if (!ProtoAST->codegen()) {
+            fprintf(stderr, "Error: fail to generate code for extern.\n");
         }
     } else {
         getNextToken(); // skip token for error recovery
@@ -40,11 +36,8 @@ static void HandleExtern() {
 static void HandleTopLevelExpression() {
     if (auto FunctionAST = ParseTopLevelExpr()) {
         TC.check(FunctionAST->getBody());
-        if (auto *FunctionIR = FunctionAST->codegen()) {
-            fprintf(stderr, "Read top-level expression:\n");
-            FunctionIR->print(errs());
-            fprintf(stderr, "\n");
-            FunctionIR->eraseFromParent();
+        if (!FunctionAST->codegen()) {
+            fprintf(stderr, "Error: fail to generate code for expression.\n");
         }
     } else {
         getNextToken(); // skip token for error recovery
