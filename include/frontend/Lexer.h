@@ -13,7 +13,11 @@ enum Token {
     // primary
     tok_identifier = -4,
     tok_number = -5,
-    tok_integer = -6
+    tok_integer = -6,
+
+    // control flow
+    tok_if = -7,
+    tok_else = -8
 };
 
 /// gettok  - Return the next token from standard input

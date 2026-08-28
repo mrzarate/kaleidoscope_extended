@@ -51,6 +51,26 @@ Type TypeChecker::check(ExprAST *E) {
     case NodeKind::CallExpr:
         return Type::Unknown;
 
+    case NodeKind::IfExpr: {
+        auto *I = static_cast<IfExprAST *>(E);
+
+        // Verifies the type of condition - must be numeric
+        Type CondType = check(I->getCond());
+        if (CondType == Type::Unknown) {
+            fprintf(stderr, "Type error: if condition with unknown type\n");
+            return Type::Unknown;
+        }
+
+        // Verifies the type of both branches
+        Type ThenType = check(I->getThen());
+        Type ElseType = check(I->getElse());
+
+        // Unifies the type of both branches
+        Type Result = unify(ThenType, ElseType, '?');
+        I->setType(Result);
+        return Result;
+    }
+
     default:
         fprintf(stderr, "Type error: unknown node\n");
         return Type::Unknown;

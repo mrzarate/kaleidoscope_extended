@@ -102,6 +102,61 @@ static std::unique_ptr<ExprAST> ParseIdentifierExpr() {
     return std::make_unique<CallExprAST>(IdName, std::move(Args));
 }
 
+/// ifexpr ::== 'if' '(' expression ')' '{' expression '}' 'else' '{' expression '}'
+static std::unique_ptr<ExprAST> ParseIfExpr() {
+    getNextToken(); // consumes 'if'
+
+    if (CurTok != '(')
+        return LogError("esperado '(' apos 'if'");
+    getNextToken();
+
+    // parsers the condition
+    auto Cond = ParseExpression();
+    if (!Cond)
+        return nullptr;
+
+    if (CurTok != ')')
+        return LogError("esperado ')' apos condicao do if");
+    getNextToken();
+
+    if (CurTok != '{')
+        return LogError("esperado '{' apos condicao do if");
+    getNextToken();
+
+    // parsers the Then body
+    auto Then = ParseExpression();
+    if (!Then)
+        return nullptr;
+
+    if (CurTok != '}')
+        return LogError("esperado '}' apos corpo do if");
+    getNextToken(); // consumes '}'
+
+    std::unique_ptr<ExprAST> Else;
+
+    if (CurTok == tok_else) {
+        getNextToken(); // consome 'else'
+
+        if (CurTok != '{')
+            return LogError("esperado '{' apos 'else'");
+        getNextToken(); // consome '{'
+
+        Else = ParseExpression();
+        if (!Else)
+            return nullptr;
+
+        if (CurTok != '}')
+            return LogError("esperado '}' apos corpo do else");
+        getNextToken(); // consome '}'
+    
+    } else { // implicit else with 0.0 value
+        Else = std::make_unique<NumberExprAST>(0.0);
+    }
+
+    return std::make_unique<IfExprAST>(std::move(Cond),
+                                       std::move(Then),
+                                       std::move(Else));
+}
 /// primary
 ///     ::= identifierexpr
 ///     ::= numberexpr
@@ -116,6 +171,8 @@ static std::unique_ptr<ExprAST> ParsePrimary() {
         return ParseNumberExpr();
     case tok_integer:
         return ParseIntExpr();
+    case tok_if:
+        return ParseIfExpr();
     case '(':
         return ParseParenExpr();
     }

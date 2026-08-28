@@ -256,3 +256,87 @@ Function *FunctionAST::codegen() {
     TheFunction->eraseFromParent();
     return nullptr;
 }
+
+Value *IfExprAST::codegen() {
+    // Generates the condition code
+    Value *CondV = Cond->codegen();
+    
+    if (!CondV)
+        return nullptr;
+
+    // Converts the condition to a bool (i1) coparing it to zero
+    if (CondV->getType()->isDoubleTy()) {
+        CondV = Builder->CreateFCmpONE(
+            CondV,
+            ConstantFP::get(*TheContext, APFloat(0.0)),
+            "ifcond");
+    } else {
+        CondV = Builder->CreateICmpNE(
+            CondV,
+            ConstantInt::get(*TheContext, APInt(64, 0, true)),
+            "ifcond");
+    }
+
+    // Obtains the current function where the code is being inserted
+    Function *TheFunction = Builder->GetInsertBlock()->getParent();
+
+    // Creates three basic blocks:
+    // ThenBB -> true branch code
+    // ElseBB -> false branch code
+    // MergeBB -> convergence point after if
+    BasicBlock *ThenBB  = BasicBlock::Create(*TheContext, "then", TheFunction);
+    BasicBlock *ElseBB  = BasicBlock::Create(*TheContext, "else");
+    BasicBlock *MergeBB = BasicBlock::Create(*TheContext, "ifcont");
+
+    // Generates the condition branch
+    // if CondV is true -> jumps to ThenBB
+    // if CondV is false -> jumps to ElseBB
+    Builder->CreateCondBr(CondV, ThenBB, ElseBB);
+
+    Builder->SetInsertPoint(ThenBB);
+    Value *ThenV = Then->codegen();
+
+    if (!ThenV)
+        return nullptr;
+
+    // Jumps to the merge block after finishing then
+    Builder->CreateBr(MergeBB);
+
+    // Refreshes ThenBB - the The codegen might have changed the current block
+    // The phi node needs to knows which block the valu comes from
+    ThenBB = Builder->GetInsertBlock();
+
+    // Generates the Else Block
+    // Inserts ElseBB in the function now that ThenBB is complete
+    TheFunction->insert(TheFunction->end(), ElseBB);
+    Builder->SetInsertPoint(ElseBB);
+
+    Value *ElseV = Else->codegen();
+    if (!ElseV)
+        return nullptr;
+
+    Builder->CreateBr(MergeBB);
+
+    // Same reason, refreshes ElseBB after possible nesting
+    ElseBB = Builder->GetInsertBlock();
+
+    // Generates the Merge block with phi node
+    TheFunction->insert(TheFunction->end(), MergeBB);
+    Builder->SetInsertPoint(MergeBB);
+
+    // If the branches types are distints, promotes Int to Double
+    if (ThenV->getType()->isIntegerTy() && ElseV->getType()->isDoubleTy())
+        ThenV = Builder->CreateSIToFP(
+            ThenV, llvm::Type::getDoubleTy(*TheContext), "conv");
+    else if (ThenV->getType()->isDoubleTy() && ElseV->getType()->isIntegerTy())
+        ElseV = Builder->CreateSIToFP(
+            ElseV, llvm::Type::getDoubleTy(*TheContext), "conv");
+
+    // Phi node: chooses the correct value depending on which branch was executed
+    // It is a central instruction of the SSA model for if/else
+    PHINode *PN = Builder->CreatePHI(ThenV->getType(), 2, "iftmp");
+    PN->addIncoming(ThenV, ThenBB);
+    PN->addIncoming(ElseV, ElseBB);
+
+    return PN;
+}

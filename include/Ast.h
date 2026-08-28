@@ -2,6 +2,7 @@
 #define AST_H
 
 #include "llvm/IR/Value.h"
+#include "llvm/IR/Function.h"
 #include <string> // Strings general utility
 #include <memory> // Smarter pointers and memory management
 #include <vector> // Vector general utility
@@ -11,7 +12,8 @@ enum class NodeKind {
     IntExpr,
     VariableExpr,
     BinaryExpr,
-    CallExpr
+    CallExpr,
+    IfExpr
 };
 /// Type - Represents the types of data supported by the language
 /// Adds  new types such as Bool, Int, etc.
@@ -107,6 +109,32 @@ public:
     const std::string &getCallee() const { return Callee; }
     Type getType() const override { return ReturnType; }
     void setType(Type T) { ReturnType = T; }
+    llvm::Value *codegen() override;
+};
+
+/// IfExprAST - Expression class for if/else, both branches must
+/// return a value, similar to C operator
+class IfExprAST : public ExprAST {
+    std::unique_ptr<ExprAST> Cond; // Condition expression
+    std::unique_ptr<ExprAST> Then; // if body
+    std::unique_ptr<ExprAST> Else; // else boldy
+    Type ResultType;
+
+public:
+    IfExprAST(std::unique_ptr<ExprAST> Cond,
+              std::unique_ptr<ExprAST> Then,
+              std::unique_ptr<ExprAST> Else)
+        :   ExprAST(NodeKind::IfExpr),
+            Cond(std::move(Cond)),
+            Then(std::move(Then)),
+            Else(std::move(Else)),
+            ResultType(Type::Unknown) {}
+
+    ExprAST *getCond() const { return Cond.get(); }
+    ExprAST *getThen() const { return Then.get(); }
+    ExprAST *getElse() const { return Else.get(); }
+    Type getType() const override { return ResultType; }
+    void setType(Type T) { ResultType = T; }
     llvm::Value *codegen() override;
 };
 
