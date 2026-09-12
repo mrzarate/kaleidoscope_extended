@@ -24,6 +24,8 @@ int gettok() {
         if (IdentifierStr == "extern") return tok_extern;
         if (IdentifierStr == "if") return tok_if;
         if (IdentifierStr == "else") return tok_else;
+        if (IdentifierStr == "double") return tok_double;
+        if (IdentifierStr == "int") return tok_int;
 
         return tok_identifier;
     }

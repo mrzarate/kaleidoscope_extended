@@ -4,7 +4,7 @@
 #include "frontend/Parser.h"
 #include "frontend/TypeChecker.h"
 #include "codegen/CodeGen.h"
-#include <cstdio>
+#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
@@ -16,7 +16,7 @@ static void HandleDefinition() {
     if (auto FunctionAST = ParseDefinition()) {
         TC.check(FunctionAST->getBody());
         if (!FunctionAST->codegen()) {
-            fprintf(stderr, "Error: fail to generate code for function definition.\n");
+            llvm::errs() << "Error: fail to generate code for function definition.\n";
         }
     } else {
         getNextToken(); // skip token for error recovery
@@ -26,7 +26,7 @@ static void HandleDefinition() {
 static void HandleExtern() {
     if (auto ProtoAST = ParseExtern()) {
         if (!ProtoAST->codegen()) {
-            fprintf(stderr, "Error: fail to generate code for extern.\n");
+            llvm::errs() << "Error: fail to generate code for extern.\n";
         }
     } else {
         getNextToken(); // skip token for error recovery
@@ -37,7 +37,7 @@ static void HandleTopLevelExpression() {
     if (auto FunctionAST = ParseTopLevelExpr()) {
         TC.check(FunctionAST->getBody());
         if (!FunctionAST->codegen()) {
-            fprintf(stderr, "Error: fail to generate code for expression.\n");
+            llvm::errs() << "Error: fail to generate code for expression.\n";
         }
     } else {
         getNextToken(); // skip token for error recovery

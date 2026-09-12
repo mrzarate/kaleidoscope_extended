@@ -11,7 +11,6 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Host.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include <cstdio>
 
 using namespace llvm;
 
@@ -29,7 +28,7 @@ std::unique_ptr<CGSCCAnalysisManager> TheCGAM;
 std::unique_ptr<ModuleAnalysisManager> TheMAM;
 
 Value *LogErrorV(const char *Str) {
-    fprintf(stderr, "Error: %s\n", Str);
+    llvm::errs() << "Error: " << Str << "\n";
     return nullptr;
 }
 
@@ -78,8 +77,7 @@ bool EmitObjectFile(const std::string &Filename) {
     std::string Error;
     auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
     if (!Target) {
-        fprintf(stderr, "Error: Impossible to find the target: %s\n",
-                Error.c_str());
+        llvm::errs() << "Error: Impossible to find the target: " << Error << "\n";
         return false;
     }
 
@@ -102,8 +100,8 @@ bool EmitObjectFile(const std::string &Filename) {
     std::error_code EC;
     raw_fd_ostream Dest(Filename, EC, sys::fs::OF_None);
     if (EC) {
-        fprintf(stderr, "Error: was not possible to open the file '%s': %s\n",
-                Filename.c_str(), EC.message().c_str());
+        llvm::errs() << "Error: was not possible to open the file '"
+                     << Filename << "': " << EC.message() << "\n";
         return false;
     }
 
@@ -112,7 +110,7 @@ bool EmitObjectFile(const std::string &Filename) {
     if (TheTargetMachine->addPassesToEmitFile(
             CodeGenPM, Dest, nullptr,
             CodeGenFileType::ObjectFile)) {
-        fprintf(stderr, "Error: target does not support file object emission\n");
+        llvm::errs() << "Error: target does not support file object emission\n";
         return false;
     }
 
@@ -120,7 +118,7 @@ bool EmitObjectFile(const std::string &Filename) {
     CodeGenPM.run(*TheModule);
     Dest.flush();
 
-    fprintf(stderr, "Object file generated: %s\n", Filename.c_str());
+    llvm::errs() << "Object file generated: " << Filename << "\n";
     return true;
 }
 
@@ -174,7 +172,7 @@ Value *BinaryExprAST::codegen() {
             // converts bool (i1) to i64
             return Builder->CreateZExt(L, llvm::Type::getInt64Ty(*TheContext), "booltmp");
         } else {
-            L = Builder->CreateFCmpULT(R, L, "cmptmp");
+            L = Builder->CreateFCmpULT(L, R, "cmptmp");
             // converts bool (i1) to double
             return Builder->CreateUIToFP(L, llvm::Type::getDoubleTy(*TheContext), "booltmp");
         }

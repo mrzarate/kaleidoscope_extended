@@ -1,5 +1,5 @@
 #include "frontend/TypeChecker.h"
-#include <cstdio>
+#include "llvm/Support/raw_ostream.h"
 
 /// unify - Applies the promotion rule between two types
 Type TypeChecker::unify(Type A, Type B, char Op) {
@@ -13,14 +13,15 @@ Type TypeChecker::unify(Type A, Type B, char Op) {
         return Type::Double;
 
     // Any other pair is incompatible
-    fprintf(stderr, "Type error: incompatible types in operation '%c'\n", Op);
+    llvm::errs() << "Type error: incompatible types in operation '"
+                 << Op << "'\n";
     return Type::Unknown;
 }
 
 /// check - Solves the type of any node of the AST recursively
 Type TypeChecker::check(ExprAST *E) {
     if (!E) {
-        fprintf(stderr, "Type error: null node\n");
+        llvm::errs() << "Type error: null node\n";
         return Type::Unknown;
     }
 
@@ -57,7 +58,7 @@ Type TypeChecker::check(ExprAST *E) {
         // Verifies the type of condition - must be numeric
         Type CondType = check(I->getCond());
         if (CondType == Type::Unknown) {
-            fprintf(stderr, "Type error: if condition with unknown type\n");
+            llvm::errs() << "Type error: if condition with unknown type\n";
             return Type::Unknown;
         }
 
@@ -71,8 +72,46 @@ Type TypeChecker::check(ExprAST *E) {
         return Result;
     }
 
+    case NodeKind::VarDeclExpr: {
+        auto *V = static_cast<VarDeclExprAST *>(E);
+        Type InitType = check(V->getInit());
+        // verifies if the initializator type is compatible
+        // with the declared type
+        if (InitType != V->getType() &&
+            InitType != Type::Unknown) {
+            // automatic promotion: int -> double if necessary
+            if (!(InitType == Type::Int &&
+                  V->getType() == Type::Double)) {
+                llvm::errs() << "Type error: incompatible initializator type"
+                             << " with declared type of '"
+                             << V->getName() << "'\n";
+            }
+        }
+        return V->getType();
+    }
+
+    case NodeKind::AssignExpr: {
+        auto *A = static_cast<AssignExprAST *>(E);
+        Type ValType = check(A->getValue());
+        // the assignment type is the type of the value
+        // the check against the target variable will be performed
+        // once the symbol table is integrated
+        A->setType(ValType);
+        return ValType;
+    }
+
+    case NodeKind::BlockExpr: {
+        auto *Block = static_cast<BlockExprAST *>(E);
+        Type LastType = Type::Unknown;
+        for (auto &Stmt : Block->getStmts())
+            LastType = check(Stmt.get());
+        // type of the block is the type of the last statement
+        Block->setType(LastType);
+        return LastType;
+    }
+
     default:
-        fprintf(stderr, "Type error: unknown node\n");
+        llvm::errs() << "Type error: unknown node\n";
         return Type::Unknown;
     }
 }

@@ -13,7 +13,10 @@ enum class NodeKind {
     VariableExpr,
     BinaryExpr,
     CallExpr,
-    IfExpr
+    IfExpr,
+    VarDeclExpr,
+    AssignExpr,
+    BlockExpr,
 };
 /// Type - Represents the types of data supported by the language
 /// Adds  new types such as Bool, Int, etc.
@@ -133,6 +136,59 @@ public:
     ExprAST *getCond() const { return Cond.get(); }
     ExprAST *getThen() const { return Then.get(); }
     ExprAST *getElse() const { return Else.get(); }
+    Type getType() const override { return ResultType; }
+    void setType(Type T) { ResultType = T; }
+    llvm::Value *codegen() override;
+};
+/// VarDeclExprAST - Declaration of local variable
+/// Sintax: double x = expr; or int y = expr;
+class VarDeclExprAST : public ExprAST {
+    std::string Name;
+    Type VarType;
+    std::unique_ptr<ExprAST> Init;
+public:
+    VarDeclExprAST(const std::string &Name, Type VarType,
+                std::unique_ptr<ExprAST> Init)
+        : ExprAST(NodeKind::VarDeclExpr), Name(Name),
+          VarType(VarType), Init(std::move(Init)) {}
+    const std::string &getName() const { return Name; }
+    Type getType() const override { return VarType; }
+    ExprAST *getInit() const { return Init.get(); }
+    llvm::Value *codegen() override;
+
+};
+
+/// AssignExprAST - Assignment of an existing variable
+/// Sintax: x = expr;
+class AssignExprAST : public ExprAST {
+    std::string Name; // target variable name
+    std::unique_ptr<ExprAST> Value; // new value
+    Type VarType; // type of the variable
+public:
+    AssignExprAST(const std::string &Name,
+                  std::unique_ptr<ExprAST> Value)
+        : ExprAST(NodeKind::AssignExpr), Name(Name),
+          Value(std::move(Value)), VarType(Type::Unknown) {}
+    const std::string &getName() const { return Name; }
+    ExprAST *getValue() const { return Value.get(); }
+    Type getType() const override { return VarType; }
+    void setType(Type T) { VarType = T;}
+    llvm::Value *codegen() override;
+};
+
+/// BlockExprAST - Block of statements
+/// Sintax: { stmt1; stmt2; expr }
+/// The block value is the value of the last expression
+class BlockExprAST : public ExprAST {
+    std::vector<std::unique_ptr<ExprAST>> Stmts;
+    Type ResultType;
+public:
+    BlockExprAST(std::vector<std::unique_ptr<ExprAST>> Stmts)
+        : ExprAST(NodeKind::BlockExpr), Stmts(std::move(Stmts)),
+        ResultType(Type::Unknown) {}
+    const std::vector<std::unique_ptr<ExprAST>> &getStmts() const {
+        return Stmts;
+    }
     Type getType() const override { return ResultType; }
     void setType(Type T) { ResultType = T; }
     llvm::Value *codegen() override;
