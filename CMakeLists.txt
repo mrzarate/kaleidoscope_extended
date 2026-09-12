@@ -31,6 +31,7 @@ add_executable(kaleidoscope_extended
     src/frontend/Lexer.cpp
     src/frontend/Parser.cpp
     src/frontend/TypeChecker.cpp
+    src/sema/SymbolTable.cpp
     src/codegen/CodeGen.cpp
     src/Driver.cpp
     src/Main.cpp
