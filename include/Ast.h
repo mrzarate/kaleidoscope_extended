@@ -16,11 +16,11 @@ enum class NodeKind {
     IfExpr,
     VarDeclExpr,
     AssignExpr,
-    BlockExpr,
+    BlockExpr
 };
 /// Type - Represents the types of data supported by the language
 /// Adds  new types such as Bool, Int, etc.
-enum class Type {
+enum class ASTType {
     Double,
     Int,
     Unknown // Used before type-checking solver
@@ -33,7 +33,7 @@ public:
     ExprAST(NodeKind Kind) : Kind(Kind) {}
     virtual ~ExprAST() = default;
     virtual llvm::Value *codegen() = 0;
-    virtual Type getType() const = 0;
+    virtual ASTType getType() const = 0;
     NodeKind getKind() const { return Kind; }
 };
 
@@ -45,7 +45,7 @@ public:
     NumberExprAST(double Val)
         : ExprAST(NodeKind::NumberExpr), Val(Val) {}
     double getVal() const { return Val; }
-    Type getType() const override { return Type::Double; }
+    ASTType getType() const override { return ASTType::Double; }
     llvm::Value *codegen() override;
 };
 
@@ -57,7 +57,7 @@ public:
     IntExprAST(long long Num)
         : ExprAST(NodeKind::IntExpr), Num(Num) {}
     long long getVal() const { return Num; }
-    Type getType() const override { return Type::Int; }  
+    ASTType getType() const override { return ASTType::Int; }  
     llvm::Value *codegen() override; 
 };
 
@@ -67,11 +67,11 @@ class VariableExprAST : public ExprAST {
     Type VarType;
 
 public:
-    VariableExprAST(const std::string &Name, Type VarType = Type::Unknown) 
+    VariableExprAST(const std::string &Name, ASTType VarType = ASTType::Unknown) 
         : ExprAST(NodeKind::VariableExpr), Name(Name), VarType(VarType) {}
     const std::string &getName() const { return Name; }
-    Type getType() const override { return VarType; }
-    void setType(Type T) { VarType = T; }
+    ASTType getType() const override { return VarType; }
+    void setType(ASTType T) { VarType = T; }
     llvm::Value *codegen() override;
 };
 
@@ -79,21 +79,20 @@ public:
 class BinaryExprAST : public ExprAST {
     char Op;
     std::unique_ptr<ExprAST> LHS, RHS;
-    Type ResultType;
+    ASTType ResultType;
 
 public:
     BinaryExprAST(char Op, std::unique_ptr<ExprAST> LHS,
                 std::unique_ptr<ExprAST> RHS)
         : ExprAST(NodeKind::BinaryExpr), Op(Op),
           LHS(std::move(LHS)), RHS(std::move(RHS)),
-          ResultType(Type::Unknown) {}
+          ResultType(ASTType::Unknown) {}
 
     char getOp() const { return Op; }
     ExprAST *getLHS() const { return LHS.get(); }
     ExprAST *getRHS() const { return RHS.get(); }
-
-    Type getType() const override { return ResultType; }
-    void setType(Type T) { ResultType = T; }
+    ASTType getType() const override { return ResultType; }
+    void setType(ASTType T) { ResultType = T; }
     llvm::Value *codegen() override;
 };
 
@@ -101,17 +100,17 @@ public:
 class CallExprAST: public ExprAST {
     std::string Callee;
     std::vector<std::unique_ptr<ExprAST>> Args;
-    Type ReturnType;
+    ASTType ReturnType;
 
 public:
     CallExprAST(const std::string &Callee, 
                 std::vector<std::unique_ptr<ExprAST>> Args)
         : ExprAST(NodeKind::CallExpr), Callee(Callee),
-        Args(std::move(Args)), ReturnType(Type::Unknown) {}
+        Args(std::move(Args)), ReturnType(ASTType::Unknown) {}
 
     const std::string &getCallee() const { return Callee; }
-    Type getType() const override { return ReturnType; }
-    void setType(Type T) { ReturnType = T; }
+    ASTType getType() const override { return ReturnType; }
+    void setType(ASTType T) { ReturnType = T; }
     llvm::Value *codegen() override;
 };
 
@@ -121,7 +120,7 @@ class IfExprAST : public ExprAST {
     std::unique_ptr<ExprAST> Cond; // Condition expression
     std::unique_ptr<ExprAST> Then; // if body
     std::unique_ptr<ExprAST> Else; // else boldy
-    Type ResultType;
+    ASTType ResultType;
 
 public:
     IfExprAST(std::unique_ptr<ExprAST> Cond,
@@ -131,28 +130,28 @@ public:
             Cond(std::move(Cond)),
             Then(std::move(Then)),
             Else(std::move(Else)),
-            ResultType(Type::Unknown) {}
+            ResultType(ASTType::Unknown) {}
 
     ExprAST *getCond() const { return Cond.get(); }
     ExprAST *getThen() const { return Then.get(); }
     ExprAST *getElse() const { return Else.get(); }
-    Type getType() const override { return ResultType; }
-    void setType(Type T) { ResultType = T; }
+    ASTType getType() const override { return ResultType; }
+    void setType(ASTType T) { ResultType = T; }
     llvm::Value *codegen() override;
 };
 /// VarDeclExprAST - Declaration of local variable
 /// Sintax: double x = expr; or int y = expr;
 class VarDeclExprAST : public ExprAST {
     std::string Name;
-    Type VarType;
+    ASTType VarType;
     std::unique_ptr<ExprAST> Init;
 public:
-    VarDeclExprAST(const std::string &Name, Type VarType,
+    VarDeclExprAST(const std::string &Name, ASTType VarType,
                 std::unique_ptr<ExprAST> Init)
         : ExprAST(NodeKind::VarDeclExpr), Name(Name),
           VarType(VarType), Init(std::move(Init)) {}
     const std::string &getName() const { return Name; }
-    Type getType() const override { return VarType; }
+    ASTType getType() const override { return VarType; }
     ExprAST *getInit() const { return Init.get(); }
     llvm::Value *codegen() override;
 
@@ -162,17 +161,17 @@ public:
 /// Sintax: x = expr;
 class AssignExprAST : public ExprAST {
     std::string Name; // target variable name
-    std::unique_ptr<ExprAST> Value; // new value
-    Type VarType; // type of the variable
+    std::unique_ptr<ExprAST> RHS; // new value
+    ASTType VarType; // type of the variable
 public:
     AssignExprAST(const std::string &Name,
-                  std::unique_ptr<ExprAST> Value)
+                  std::unique_ptr<ExprAST> RHS)
         : ExprAST(NodeKind::AssignExpr), Name(Name),
-          Value(std::move(Value)), VarType(Type::Unknown) {}
+          RHS(std::move(RHS)), VarType(ASTType::Unknown) {}
     const std::string &getName() const { return Name; }
-    ExprAST *getValue() const { return Value.get(); }
-    Type getType() const override { return VarType; }
-    void setType(Type T) { VarType = T;}
+    ExprAST *getValue() const { return RHS.get(); }
+    ASTType getType() const override { return VarType; }
+    void setType(ASTType T) { VarType = T;}
     llvm::Value *codegen() override;
 };
 
@@ -181,16 +180,16 @@ public:
 /// The block value is the value of the last expression
 class BlockExprAST : public ExprAST {
     std::vector<std::unique_ptr<ExprAST>> Stmts;
-    Type ResultType;
+    ASTType ResultType;
 public:
     BlockExprAST(std::vector<std::unique_ptr<ExprAST>> Stmts)
         : ExprAST(NodeKind::BlockExpr), Stmts(std::move(Stmts)),
-        ResultType(Type::Unknown) {}
+        ResultType(ASTType::Unknown) {}
     const std::vector<std::unique_ptr<ExprAST>> &getStmts() const {
         return Stmts;
     }
-    Type getType() const override { return ResultType; }
-    void setType(Type T) { ResultType = T; }
+    ASTType getType() const override { return ResultType; }
+    void setType(ASTType T) { ResultType = T; }
     llvm::Value *codegen() override;
 };
 
@@ -200,16 +199,16 @@ public:
 class PrototypeAST {
     std::string Name;
     std::vector<std::string> Args;
-    Type ReturnType;
+    ASTType ReturnType;
 
 public:
     PrototypeAST(const std::string &Name, std::vector<std::string> Args,
-                    Type ReturnType = Type::Double)
+                    ASTType ReturnType = ASTType::Double)
         : Name(Name), Args(std::move(Args)), ReturnType(ReturnType) {}
 
     const std::string &getName() const { return Name; }
     const std::vector<std::string> &getArgs() const { return Args; }
-    Type getReturnType() const { return ReturnType; }
+    ASTType getReturnType() const { return ReturnType; }
     llvm::Function *codegen();
 };
 

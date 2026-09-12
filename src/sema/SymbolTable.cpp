@@ -7,24 +7,24 @@ void SymbolTable::enterScope() {
 
 void SymbolTable::exitScope() {
     if (Scopes.empty()) {
-        llvm:errs() << "SymbolTable error: attempt to exit empty scope\n"
+        llvm::errs() << "SymbolTable error: attempt to exit empty scope\n";
         return;
     }
     Scopes.pop_back();
 }
 
 bool SymbolTable::declare(const std::string &Name, Type VarType,
-                          llvm::AllocaInst **Alloca) {
+                          llvm::AllocaInst *Alloca) {
     if (Scopes.empty()) {
         llvm::errs() << "SymbolTable error: declaration out of scope\n";
-        return false();
+        return false;
     }
 
     auto &CurrentScope = Scopes.back();
 
     if (CurrentScope.count(Name)) {
         llvm::errs() << "SymbolTable error: variable '" << Name
-                     << "' already declared in this scope.\n"
+                     << "' already declared in this scope\n";
     }
 
     CurrentScope[Name] = SymbolInfo{VarType, Alloca};

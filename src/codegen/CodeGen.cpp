@@ -136,8 +136,15 @@ Value *IntExprAST::codegen() {
 /// Reference to variable: search in the value map of current scope
 Value *VariableExprAST::codegen() {
     Value *V = NamedValues[Name];
-    if (!V)
-        return LogErrorV("Unknown variable name");
+    if (!V) {
+        llvm::errs() << "Error: variable '" << Name << "' not declared\n";
+        return nullptr;
+    }
+    // If it's an alloca (local mutable variable), generates load
+    if (auto *Alloca = llvm::dyn_cast<AllocaInst>(V))
+        return Builder->CreateLoad(Alloca->getAllocatedType(), Alloca, Name);
+
+    // If it's a function parameter (Value* direct), return as it is
     return V;
 }
 
@@ -337,4 +344,93 @@ Value *IfExprAST::codegen() {
     PN->addIncoming(ElseV, ElseBB);
 
     return PN;
+}
+
+/// VarDeclExprAST::codegn - Declaration of local variable
+/// Generates: alloca + store of initial value
+Value *VarDeclExprAST::codegen() {
+    Function *TheFunction = Builder->GetInsertBlock()->getParent();
+
+    // Generates the value of initializator before alloca
+    Value *InitVal = Init->codegen();
+    if (!InitVal)
+        return nullptr;
+
+    // creates the alloca in the entry block of the function
+    // The alloca type depends of the type declared
+    llvm::Type *AllocaType = (VarType == ::Type::Double)
+        ? llvm::Type::getDoubleTy(*TheContext)
+        : llvm::Type::getInt64Ty(*TheContext);
+
+    // Creates the alloca at the beginning of the function 
+    // This makes it easier for the LLVM mem2reg pass 
+    // to promote it to SSA registers
+    IRBuilder<> TmpBuilder(
+        &TheFunction->getEntryBlock(),
+        TheFunction->getEntryBlock().begin());
+    AllocaInst *Alloca = TmpBuilder.CreateAlloca(AllocaType, nullptr, Name);
+
+    // Automatic Promotion int -> double if necessary
+    if (VarType == ::Type::Double && InitVal->getType()->isIntegerTy())
+        InitVal = Builder->CreateSIToFP(
+            InitVal, llvm::Type::getDoubleTy(*TheContext), "conv");
+
+    // Writes the initial value in the variable
+    Builder->CreateStore(InitVal, Alloca);
+
+    // Register in the global symbol table
+    NamedValues[Name] = Alloca;
+
+    // Returns the initial value, allow to use declaration as expression
+    return InitVal;
+}
+
+/// AssignExprAST::codegen - Assigns the existent variable
+/// Generates: store of the new value of the existent alloca
+Value *AssignExprAST::codegen() {
+    // Searches the variable's alloca
+    llvm::Value *VarAlloca = NamedValues[Name];
+    if (!VarAlloca) {
+        llvm::errs() << "Error: variable '" << Name << "' not declared\n";
+        return nullptr;
+    }
+
+    // Generates the new value
+    llvm::Value *NewVal = this->Value->codegen();
+    if (!NewVal)
+        return nullptr;
+
+    // Automatic promotion if necessary
+    AllocaInst *Alloca = llvm::dyn_cast<AllocaInst>(VarAlloca);
+    if (Alloca) {
+        llvm::Type *AllocaType = Alloca->getAllocatedType();
+        if (AllocaType->isDoubleTy() && NewVal->getType()->isIntegerTy())
+            NewVal = Builder->CreateSIToFP(
+                NewVal, llvm::Type::getDoubleTy(*TheContext), "conv");
+    }
+
+    // Writes the new value
+    Builder->CreateStore(NewVal, VarAlloca);
+
+    // Return the assigned value
+    return NewVal;
+}
+
+/// BlockExprAST::codegen - Block of statements
+/// Generates the code for each statement in sequence
+/// return the value of the last statement
+Value *BlockExprAST::codegen() {
+    Value *Last = nullptr;
+
+    for (auto &Stmt : Stmts) {
+        Last = Stmt->codegen();
+        if (!Last)
+            return nullptr;
+    }
+
+    // Empty Block returns 0.0
+    if (!Last)
+        return ConstantFP::get(*TheContext, APFloat(0.0));
+
+    return Last;
 }

@@ -12,7 +12,7 @@
 // SymbolInfo - Informations about a declared variable
 struct SymbolInfo {
     Type VarType; // variable type
-    llvm::AllocaInst *Alloca // pointer to alloca in LLVM stack
+    llvm::AllocaInst *Alloca; // pointer to alloca in LLVM stack
                              // nullptr until codegen runs
 };
 
