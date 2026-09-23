@@ -16,7 +16,9 @@ enum class NodeKind {
     IfExpr,
     VarDeclExpr,
     AssignExpr,
-    BlockExpr
+    BlockExpr,
+    ForExpr,
+    WhileExpr,
 };
 
 // Qualificado como ASTType pra nunca conflitar com llvm::Type
@@ -181,6 +183,56 @@ public:
     void setType(ASTType T) { ResultType = T; }
     llvm::Value *codegen() override;
 };
+
+/// ForExprAST - for loop with variable of local loop
+/// Sintax: for (double i = 0.0; i < 10.0; i = i + 1.0) { body }
+class ForExprAST : public ExprAST {
+    std::string VarName;
+    ASTType VarType;
+    std::unique_ptr<ExprAST> Init;
+    std::unique_ptr<ExprAST> Cond;
+    std::unique_ptr<ExprAST> Step;
+    std::unique_ptr<ExprAST> Body;
+public:
+    ForExprAST(const std::string &VarName, ASTType VarType,
+                std::unique_ptr<ExprAST> Init,
+                std::unique_ptr<ExprAST> Cond,
+                std::unique_ptr<ExprAST> Step,
+                std::unique_ptr<ExprAST> Body)
+        :   ExprAST(NodeKind::ForExpr),
+            VarName(VarName), VarType(VarType),
+            Init(std::move(Init)),
+            Cond(std::move(Cond)),
+            Step(std::move(Step)),
+            Body(std::move(Body)) {}
+
+    const std::string &getVarName() const { return VarNames; }
+    ASTType getVarType() const { return VarType; }
+    ExprAST *getInit() const { return Init.get(); }
+    ExprAST *getCond() const { return Cond.get(); }
+    ExprAST *getStop() const { return Stop.get(); }
+    ExprAST *getBody() const { return Body.get(); }
+    ASTType getType() const override { return ASTType::Unknown; }
+    llvm::Value *codegen() override;
+}
+
+/// WhileExprAST - while loop
+/// Sintax: while (cond) { body }
+class WhileExprAST : public ExprAST {
+    std::unique_ptr<ExprAST> Cond;
+    std::unique_ptr<ExprAST> Body;
+public:
+    WhileExprAST(std::unique_ptr<ExprAST> Cond,
+                 std::unique_ptr<ExprAST> Body)
+        : ExprAST(NodeKind::WhileExpr),
+          Cond(std::move(Cond)),
+          Body(std::move(Body)) {}
+
+    ExprAST *getCond() const { return Cond.get(); }
+    ExprAST *getBody() const { return Body.get(); }
+    ASTType getType() const override { return ASTType::Unknown; }
+    llvm::Value *codegen() override;
+}
 
 /// PrototypeAST - function prototype
 class PrototypeAST {

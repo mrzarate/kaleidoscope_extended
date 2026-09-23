@@ -18,10 +18,12 @@ enum Token {
     // control flow
     tok_if = -7,
     tok_else = -8,
+    tok_for = -9,
+    tok_while = -10
 
     // types - palavras-chave de tipo
-    tok_double = -9,
-    tok_int = -10,
+    tok_double = -11,
+    tok_int = -12,
 };
 
 /// gettok  - Return the next token from standard input

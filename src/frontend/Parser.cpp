@@ -241,6 +241,102 @@ static std::unique_ptr<ExprAST> ParseBlock() {
     return std::make_unique<BlockExprAST>(std::move(Stmts));
 }
 
+/// forexpr ::= 'for' '(' type identifier '=' expression ';'
+///                         expression ';'
+///                         expression ')' block
+static std::unique_ptr<ExprAST> ParserForExpr() {
+    getNextToken();
+
+    if (CurTok != '(')
+        return LogError("expected '(' after 'for'");
+    getNextToken(); // consumes '('
+
+    // type of loop variable: double or int
+    if (CurTok != tok_double && CurTok != tok_int)
+        return LogError("expected type (double or int) in 'for' declaration");
+    ASTType VarType = (CurTok == tok_double) ? ASTType::Double : ASTType::Int;
+    getNextToken(); // consumes type
+
+    // loop variable name
+    if (CurTok != tok_identifier)
+        return LogError("expected name of the variable in the 'for'");
+    std::string VarName = IdentifierStr;
+    getNextToken(); // consumes identifier
+
+    // '=' initial
+    if (CurTok != '=')
+        return LogError("expected '=' after variable name in 'for'");
+    getNextToken(); // consumes '='
+
+    // initialization expression
+    auto Init = ParseExpression();
+    if (!Init)
+        return nullptr;
+
+    // ';' separator
+    if (CurTok != ';')
+        return LogError("expected ';' after 'for' initializator");
+    getNextToken(); // consumes ;
+
+    // condition
+    auto Cond = ParseExpression();
+    if (!Cond)
+        return nullptr;
+
+    // ';' separator
+    if (CurTok != '=')
+        return LogError("expected ';' after 'for condition");
+    getNextToken();
+
+    // step
+    auto Step = ParseExpression()
+    if (!Step)
+        return nullptr;
+
+    if (CurTok != ')')
+        return LogError("expected ')' after 'for' step");
+    getNextToken(); // consume ')'
+
+    // loop body - necessarily a block { }
+    if (CurTok != '{')
+        return LogError("expected '{' after 'for' description");
+    auto Body = ParseBlock();
+    if (!Body)
+        return nullptr;
+
+    return std::make_unique<ForExprAST>(VarName, VarType,
+                                        std::move(Init),
+                                        std::move(Cond),
+                                        std::move(Step),
+                                        std::move(Body));
+}
+
+/// whileexpr ::= 'while' '(' expression ')' block
+static std::unique_ptr<ExprAST> ParseWhileExpr() {
+    getNextToken(); // consumes 'while'
+
+    if (CurTok != '(')
+        return LogError("expected '(' after 'while'");
+    getNextToken(); // consumes '('
+
+    auto Cond = ParseExpression();
+    if (!Cond)
+        return nullptr;
+
+    if (CurTok != ')')
+        return LogError("expected ')' after 'while' condition");
+    getNextToken(); // consumes ')'
+
+    // loop body - necessarily a block { }
+    if (CurTok != '{')
+        return LogError("expected '{' after 'for' description");
+    auto Body = ParseBlock();
+    if (!Body)
+        return nullptr;
+
+    return std::make_unique<WhileExprAST>(std::move(Cond), std::move(Body));
+}
+
 /// primary
 ///     ::= identifierexpr
 ///     ::= numberexpr
@@ -257,6 +353,10 @@ static std::unique_ptr<ExprAST> ParsePrimary() {
         return ParseIntExpr();
     case tok_if:
         return ParseIfExpr();
+    case tok_for:
+        return ParseForExpr();
+    case tok_while:
+        return ParseWhileExpr();
     case tok_double:
     case tok_int:
         return ParseVarDecl();
