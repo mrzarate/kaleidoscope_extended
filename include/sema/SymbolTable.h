@@ -11,7 +11,7 @@
 
 // SymbolInfo - Informations about a declared variable
 struct SymbolInfo {
-    Type VarType; // variable type
+    ASTType VarType; // variable type
     llvm::AllocaInst *Alloca; // pointer to alloca in LLVM stack
                              // nullptr until codegen runs
 };
@@ -41,7 +41,7 @@ public:
     /// Declares a variable in the current scope
     /// Returns false if already exits a variable with this name
     /// in the current scope (returning an error)
-    bool declare(const std::string &Name, Type VarType,
+    bool declare(const std::string &Name, ASTType VarType,
                  llvm::AllocaInst *Alloca = nullptr);
 
     /// Searchs variable by the name, from the internal scope

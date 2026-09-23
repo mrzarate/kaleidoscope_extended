@@ -119,7 +119,7 @@ static std::unique_ptr<ExprAST> ParseIdentifierExpr() {
 /// type ::= 'double' | 'int'
 static std::unique_ptr<ExprAST> ParseVarDecl() {
     // CurTok is tok_double or tok_int
-    Type VarType = (CurTok == tok_double) ? Type::Double : Type::Int;
+    ASTType VarType = (CurTok == tok_double) ? ASTType::Double : ASTType::Int;
     getNextToken(); // eat type
 
     // exéct identifier

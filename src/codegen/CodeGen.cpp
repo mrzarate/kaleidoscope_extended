@@ -358,7 +358,7 @@ Value *VarDeclExprAST::codegen() {
 
     // creates the alloca in the entry block of the function
     // The alloca type depends of the type declared
-    llvm::Type *AllocaType = (VarType == ::Type::Double)
+    llvm::Type *AllocaType = (VarType == ASTType::Double)
         ? llvm::Type::getDoubleTy(*TheContext)
         : llvm::Type::getInt64Ty(*TheContext);
 
@@ -371,7 +371,7 @@ Value *VarDeclExprAST::codegen() {
     AllocaInst *Alloca = TmpBuilder.CreateAlloca(AllocaType, nullptr, Name);
 
     // Automatic Promotion int -> double if necessary
-    if (VarType == ::Type::Double && InitVal->getType()->isIntegerTy())
+    if (VarType == ASTType::Double && InitVal->getType()->isIntegerTy())
         InitVal = Builder->CreateSIToFP(
             InitVal, llvm::Type::getDoubleTy(*TheContext), "conv");
 
@@ -396,7 +396,7 @@ Value *AssignExprAST::codegen() {
     }
 
     // Generates the new value
-    llvm::Value *NewVal = this->Value->codegen();
+    llvm::Value *NewVal = this->RHS->codegen();
     if (!NewVal)
         return nullptr;
 

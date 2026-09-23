@@ -13,14 +13,15 @@ ASTType TypeChecker::unify(ASTType A, ASTType B, char Op) {
         return ASTType::Double;
 
     // Any other pair is incompatible
-    fprintf(stderr, "ASTType error: incompatible types in operation '%c'\n", Op);
+    llvm::errs() << "Type error: incompatible types in operation '"
+                 << Op << "'\n";
     return ASTType::Unknown;
 }
 
 /// check - Solves the type of any node of the AST recursively
 ASTType TypeChecker::check(ExprAST *E) {
     if (!E) {
-        fprintf(stderr, "ASTType error: null node\n");
+        llvm::errs() << "Type error: null node\n";
         return ASTType::Unknown;
     }
 
@@ -71,8 +72,36 @@ ASTType TypeChecker::check(ExprAST *E) {
         return Result;
     }
 
+    case NodeKind::VarDeclExpr: {
+        auto *V = static_cast<VarDeclExprAST *>(E);
+        ASTType InitType = check(V->getInit());
+        if (InitType != V->getType() && InitType != ASTType::Unknown)
+            if (!(InitType == ASTType::Int && V->getType() == ASTType::Double))
+                llvm::errs() << "Type error: incompatible type in declaration of '"
+                             << V->getName() << "'\n";
+        return V->getType();
+    }
+
+     case NodeKind::AssignExpr: {
+        auto *A = static_cast<AssignExprAST *>(E);
+        ASTType ValType = check(A->getValue());
+        A->setType(ValType);
+
+        return ValType;
+    }
+
+    case NodeKind::BlockExpr: {
+        auto *Block = static_cast<BlockExprAST *>(E);
+        ASTType LastType = ASTType::Unknown;
+        for (auto &Stmt: Block->getStmts())
+            LastType = check(Stmt.get());
+        Block->setType(LastType);
+        
+        return LastType;
+    }
+
     default:
-        fprintf(stderr, "ASTType error: unknown node\n");
+        llvm::errs() << "ASTType error: unknown node\n";
         return ASTType::Unknown;
     }
 }

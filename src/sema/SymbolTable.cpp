@@ -13,7 +13,7 @@ void SymbolTable::exitScope() {
     Scopes.pop_back();
 }
 
-bool SymbolTable::declare(const std::string &Name, Type VarType,
+bool SymbolTable::declare(const std::string &Name, ASTType VarType,
                           llvm::AllocaInst *Alloca) {
     if (Scopes.empty()) {
         llvm::errs() << "SymbolTable error: declaration out of scope\n";
