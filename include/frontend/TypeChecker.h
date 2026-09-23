@@ -9,11 +9,11 @@ class TypeChecker {
 public:
     /// Receive any node of expression, solves it recursively
     /// and returns the resultant type.
-    Type check(ExprAST *E);
+    ASTType check(ExprAST *E);
 
 private:
     /// Apply the promotion rule between two types.
-    Type unify(Type A, Type B, char Op);
+    ASTType unify(ASTType A, ASTType B, char Op);
 };
 
 #endif // TYPECHECKER_H
