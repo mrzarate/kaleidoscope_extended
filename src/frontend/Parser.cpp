@@ -244,7 +244,7 @@ static std::unique_ptr<ExprAST> ParseBlock() {
 /// forexpr ::= 'for' '(' type identifier '=' expression ';'
 ///                         expression ';'
 ///                         expression ')' block
-static std::unique_ptr<ExprAST> ParserForExpr() {
+static std::unique_ptr<ExprAST> ParseForExpr() {
     getNextToken();
 
     if (CurTok != '(')
@@ -289,7 +289,7 @@ static std::unique_ptr<ExprAST> ParserForExpr() {
     getNextToken();
 
     // step
-    auto Step = ParseExpression()
+    auto Step = ParseExpression();
     if (!Step)
         return nullptr;
 

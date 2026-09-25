@@ -434,3 +434,195 @@ Value *BlockExprAST::codegen() {
 
     return Last;
 }
+
+/// ForExprAST::codegen
+/// Generates the IR for the for loop with local loop variable
+///
+///   entry:
+///     alloca i           ; reserves space for loop variable
+///     store init, i      ; initializes
+///     br loop_cond
+///
+///   loop_cond:
+///     %tmp = load i
+///     %cond = cmp %tmp, limit
+///     br cond, loop_body, loop_end
+///
+///   loop_body:
+///     body codegen
+///     br loop_step
+///
+///   loop_step:
+///     step codegen       ; i = i + 1.0 → store in alloca
+///     br loop_cond
+///
+///   loop_end:
+///     ret 0.0            ; loops dont return useful value
+Value *ForExprAST::codegen() {
+    Function *TheFunction = Builder->GetInsertBlock()->getParent();
+
+    // Creates alloca for loop variable in the entry block
+    llvm::Type *AllocaType = (VarType == ASTType::Double)
+        ? llvm::Type::getDoubleTy(*TheContext)
+        : llvm::Type::getInt64Ty(*TheContext);
+
+    IRBuilder<> TmpBuilder(
+        &TheFunction->getEntryBlock(),
+        TheFunction->getEntryBlock().begin());
+    AllocaInst *Alloca = TmpBuilder.CreateAlloca(AllocaType, nullptr, VarName);
+
+    // Genreates the initial value and stores in loop variable
+    Value *InitVal = Init->codegen();
+    if (!InitVal)
+        return nullptr;
+
+    // Int promotion -> double if necessary
+    if (VarType == ASTType::Double && InitVal->getType()->isIntegerTy())
+        InitVal = Builder->CreateSIToFP(
+            InitVal, llvm::Type::getDoubleTy(*TheContext), "conv");
+
+    Builder->CreateStore(InitVal, Alloca);
+
+    // Register the loop variable in the value map
+    // saves the previous value if it exists (shadowing)
+    Value *OldVal = NamedValues[VarName];
+    NamedValues[VarName] = Alloca;
+
+    // Creates the basic blocks of the loop
+    BasicBlock *CondBB = BasicBlock::Create(*TheContext, "loop_cond", TheFunction);
+    BasicBlock *BodyBB = BasicBlock::Create(*TheContext, "loop_body");
+    BasicBlock *StepBB = BasicBlock::Create(*TheContext, "loop_step");
+    BasicBlock *EndBB = BasicBlock::Create(*TheContext, "loop_end");
+
+    // Jumps to the condition block
+    Builder->CreateBr(CondBB);
+
+    // Condition Block
+    Builder->SetInsertPoint(CondBB);
+
+    Value *CondV = Cond->codegen();
+    if (!CondV)
+        return nullptr;
+
+    // Converts condition to bool(i1)
+    if (CondV->getType()->isDoubleTy()) {
+        CondV = Builder->CreateFCmpONE(
+            CondV,
+            ConstantFP::get(*TheContext, APFloat(0.0)),
+            "loopcond");
+    } else {
+        CondV = Builder->CreateICmpNE(
+            CondV,
+            ConstantInt::get(*TheContext, APInt(64, 0, true)),
+            "loopcond");
+    }
+
+    // If true -> body; if false -> end
+    Builder->CreateCondBr(CondV, BodyBB, EndBB);
+
+    // Body block
+    TheFunction->insert(TheFunction->end(), BodyBB);
+    Builder->SetInsertPoint(BodyBB);
+
+    Value *BodyVal = Body->codegen();
+    if (!BodyVal)
+        return nullptr;
+
+    // After body, goes to step
+    Builder->CreateBr(StepBB);
+
+    // Step body
+    TheFunction->insert(TheFunction->end(), StepBB);
+    Builder->SetInsertPoint(StepBB);
+
+    // The step is an assignment - ex: i = i + 1.0
+    // AssignExprAST::codegen already does the store in alloca
+    Value *StepVal = Step->codegen();
+    if (!StepVal)
+        return nullptr;
+
+    // Returns to condition
+    Builder->CreateBr(CondBB);
+
+    // End block
+    TheFunction->insert(TheFunction->end(), EndBB);
+    Builder->SetInsertPoint(EndBB);
+
+    // Restore the previous value of the loop variable
+    if (OldVal)
+        NamedValues[VarName] = OldVal;
+    else
+        NamedValues.erase(VarName);
+
+    // Loops return 0.0 by convention
+    return ConstantFP::get(*TheContext, APFloat(0.0));
+}
+
+/// WhileExprAST::codegen
+/// Simpler structure than for — without loop variable:
+///
+///   entry:
+///     br while_cond
+///
+///   while_cond:
+///     %cond = ...
+///     br cond, while_body, while_end
+///
+///   while_body:
+///     body codegen
+///     br while_cond
+///
+///   while_end:
+///     ret 0.0
+Value *WhileExprAST::codegen() {
+    Function *TheFunction = Builder->GetInsertBlock()->getParent();
+
+    // Creates basic blocks
+    BasicBlock *CondBB = BasicBlock::Create(*TheContext, "while_cond", TheFunction);
+    BasicBlock *BodyBB = BasicBlock::Create(*TheContext, "while_body");
+    BasicBlock *EndBB = BasicBlock::Create(*TheContext, "while_end");
+
+    // Jumps to condition block
+    Builder->CreateBr(CondBB);
+
+    // Condition block
+    Builder->SetInsertPoint(CondBB);
+
+    Value *CondV = Cond->codegen();
+    if (!CondV)
+        return nullptr;
+
+    // Converts the condition to bool (i1)
+    if (CondV->getType()->isDoubleTy()) {
+        CondV = Builder->CreateFCmpONE(
+            CondV,
+            ConstantFP::get(*TheContext, APFloat(0.0)),
+            "whilecond");
+    } else {
+        CondV = Builder->CreateICmpNE(
+            CondV,
+            ConstantInt::get(*TheContext, APInt(64, 0, true)),
+            "whilecond");
+    }
+
+    // If it is true -> body; if it is false -> end
+    Builder->CreateCondBr(CondV, BodyBB, EndBB);
+
+    // Body block
+    TheFunction->insert(TheFunction->end(), BodyBB);
+    Builder->SetInsertPoint(BodyBB);
+
+    Value *BodyVal = Body->codegen();
+    if (!BodyVal)
+        return nullptr;
+
+    // Returns to condition
+    Builder->CreateBr(CondBB);
+
+    // Exit block
+    TheFunction->insert(TheFunction->end(), EndBB);
+    Builder->SetInsertPoint(EndBB);
+
+    // Loops return 0.0 by convention
+    return ConstantFP::get(*TheContext, APFloat(0.0));
+}

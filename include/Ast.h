@@ -206,15 +206,15 @@ public:
             Step(std::move(Step)),
             Body(std::move(Body)) {}
 
-    const std::string &getVarName() const { return VarNames; }
+    const std::string &getVarName() const { return VarName; }
     ASTType getVarType() const { return VarType; }
     ExprAST *getInit() const { return Init.get(); }
     ExprAST *getCond() const { return Cond.get(); }
-    ExprAST *getStop() const { return Stop.get(); }
+    ExprAST *getStep() const { return Step.get(); }
     ExprAST *getBody() const { return Body.get(); }
     ASTType getType() const override { return ASTType::Unknown; }
     llvm::Value *codegen() override;
-}
+};
 
 /// WhileExprAST - while loop
 /// Sintax: while (cond) { body }
@@ -232,7 +232,7 @@ public:
     ExprAST *getBody() const { return Body.get(); }
     ASTType getType() const override { return ASTType::Unknown; }
     llvm::Value *codegen() override;
-}
+};
 
 /// PrototypeAST - function prototype
 class PrototypeAST {

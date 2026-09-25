@@ -100,6 +100,38 @@ ASTType TypeChecker::check(ExprAST *E) {
         return LastType;
     }
 
+    case NodeKind::ForExpr: {
+        auto *F = static_cast<ForExprAST *>(E);
+        
+        ASTType InitType = check(F->getInit());
+        if (InitType == ASTType::Unknown)
+            llvm::errs() << "Type error: 'for' initializatior with unknown type\n";
+
+        ASTType CondType = check(F->getCond());
+        if (CondType == ASTType::Unknown)
+            llvm::errs() << "Type error: 'for' condition with unknown type\n";
+
+        ASTType StepType = check(F->getStep());
+        if (StepType == ASTType::Unknown)
+            llvm::errs() << "Type error: 'for' step with unknown kind\n";
+
+        check(F->getBody());
+
+        return ASTType::Unknown;
+    }
+
+    case NodeKind::WhileExpr: {
+        auto *W = static_cast<WhileExprAST *>(E);
+
+        ASTType CondType = check(W->getCond());
+        if (CondType == ASTType::Unknown)
+            llvm::errs() << "Type error: 'while' condition with unknown type\n";
+
+        check(W->getBody());
+
+        return ASTType::Unknown;
+    }
+
     default:
         llvm::errs() << "ASTType error: unknown node\n";
         return ASTType::Unknown;

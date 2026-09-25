@@ -19,7 +19,7 @@ enum Token {
     tok_if = -7,
     tok_else = -8,
     tok_for = -9,
-    tok_while = -10
+    tok_while = -10,
 
     // types - palavras-chave de tipo
     tok_double = -11,
