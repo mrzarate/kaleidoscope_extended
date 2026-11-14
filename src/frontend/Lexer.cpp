@@ -15,9 +15,9 @@ int gettok() {
     while (isspace(LastChar))
         LastChar = getchar();
 
-    if (isalpha(LastChar)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
+    if (isalpha(LastChar) || LastChar == '_') { // identifier: [a-zA-Z][a-zA-Z0-9]*
         IdentifierStr = LastChar;
-        while (isalnum((LastChar = getchar())))
+        while (isalnum((LastChar = getchar())) || LastChar == '_')
             IdentifierStr += LastChar;
 
         if (IdentifierStr == "def") return tok_def;

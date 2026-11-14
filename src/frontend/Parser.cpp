@@ -161,16 +161,11 @@ static std::unique_ptr<ExprAST> ParseIfExpr() {
 
     if (CurTok != '{')
         return LogError("expected '{' after 'if' condition");
-    getNextToken();
 
     // parsers the Then body
-    auto Then = ParseExpression();
+    auto Then = ParseBlock();
     if (!Then)
         return nullptr;
-
-    if (CurTok != '}')
-        return LogError("expected '}' after 'if' body");
-    getNextToken(); // consumes '}'
 
     std::unique_ptr<ExprAST> Else;
 
@@ -179,15 +174,10 @@ static std::unique_ptr<ExprAST> ParseIfExpr() {
 
         if (CurTok != '{')
             return LogError("expected '{' after 'else'");
-        getNextToken(); // consumes '{'
 
-        Else = ParseExpression();
+        Else = ParseBlock();
         if (!Else)
             return nullptr;
-
-        if (CurTok != '}')
-            return LogError("expected '}' after 'else' body");
-        getNextToken(); // consumes '}'
     
     } else { // implicit else with 0.0 value
         Else = std::make_unique<NumberExprAST>(0.0);
@@ -284,7 +274,7 @@ static std::unique_ptr<ExprAST> ParseForExpr() {
         return nullptr;
 
     // ';' separator
-    if (CurTok != '=')
+    if (CurTok != ';')
         return LogError("expected ';' after 'for condition");
     getNextToken();
 
@@ -447,8 +437,10 @@ std::unique_ptr<FunctionAST> ParseDefinition() {
         return nullptr;
 
     // body of the function is a block
-    if (CurTok != '{')
+    if (CurTok != '{') {
+        llvm::errs() << "Parse error: expected '{' before function body\n";
         return nullptr;
+    }
 
     auto Body = ParseBlock();
     if (!Body)
